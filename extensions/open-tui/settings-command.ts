@@ -8,7 +8,7 @@ import {
 	type TUI,
 	Text,
 } from "@earendil-works/pi-tui";
-import type { IconMode, OpenTuiConfig, SettingsLanguage } from "./config.ts";
+import type { CursorStyle, IconMode, OpenTuiConfig, SettingsLanguage } from "./config.ts";
 
 interface SettingItem {
 	id: string;
@@ -23,11 +23,12 @@ const TABS: Tab[] = ["features", "icons", "segments", "telemetry"];
 const COPY = {
 	en: {
 		title: "Open TUI Settings",
-		tabs: { features: "General", icons: "Icons", segments: "Footer", telemetry: "Telemetry" },
+		tabs: { features: "General", icons: "Appearance", segments: "Footer", telemetry: "Telemetry" },
 		hint: "Tab/Shift+Tab/←/→: tabs · ↑/↓: move · Enter/Space: change · Esc/q: close",
 		labels: {
 			enabled: "Enabled",
 			language: "Language",
+			cursorStyle: "Cursor style",
 			iconMode: "Icon mode",
 			cwd: "CWD",
 			sessionName: "Session name",
@@ -48,16 +49,18 @@ const COPY = {
 			on: "On",
 			off: "Off",
 			languages: { en: "English", zh: "简体中文" },
+			cursorStyles: { block: "Block", bar: "Bar", underline: "Underline" },
 			icons: { auto: "Auto", nerd: "Nerd", ascii: "ASCII" },
 		},
 	},
 	zh: {
 		title: "Open TUI 设置",
-		tabs: { features: "常规", icons: "图标", segments: "Footer", telemetry: "遥测" },
+		tabs: { features: "常规", icons: "外观", segments: "Footer", telemetry: "遥测" },
 		hint: "Tab/Shift+Tab/←/→：切页 · ↑/↓：移动 · Enter/Space：更改 · Esc/q：关闭",
 		labels: {
 			enabled: "启用",
 			language: "语言",
+			cursorStyle: "光标样式",
 			iconMode: "图标模式",
 			cwd: "当前目录",
 			sessionName: "会话名",
@@ -78,6 +81,7 @@ const COPY = {
 			on: "开启",
 			off: "关闭",
 			languages: { en: "English", zh: "简体中文" },
+			cursorStyles: { block: "块", bar: "竖线", underline: "下划线" },
 			icons: { auto: "自动", nerd: "Nerd", ascii: "ASCII" },
 		},
 	},
@@ -110,6 +114,13 @@ function toggleLanguage(config: OpenTuiConfig): OpenTuiConfig {
 	return { ...config, settingsLanguage: config.settingsLanguage === "en" ? "zh" : "en" };
 }
 
+function cycleCursorStyle(config: OpenTuiConfig): OpenTuiConfig {
+	const order: CursorStyle[] = ["block", "bar", "underline"];
+	const currentIdx = order.indexOf(config.cursorStyle);
+	const next = order[(currentIdx + 1) % order.length]!;
+	return { ...config, cursorStyle: next };
+}
+
 function toggleTelemetry(config: OpenTuiConfig, key: keyof OpenTuiConfig["telemetry"]): OpenTuiConfig {
 	return {
 		...config,
@@ -125,7 +136,10 @@ function buildFeaturesItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 }
 
 function buildIconsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
-	return [{ id: "mode", label: copy.labels.iconMode, currentValue: copy.values.icons[config.icons.mode] }];
+	return [
+		{ id: "mode", label: copy.labels.iconMode, currentValue: copy.values.icons[config.icons.mode] },
+		{ id: "cursorStyle", label: copy.labels.cursorStyle, currentValue: copy.values.cursorStyles[config.cursorStyle] },
+	];
 }
 
 function buildSegmentsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem[] {
@@ -178,7 +192,10 @@ function handleSettingChange(
 		if (itemId === "enabled") return toggleEnabled(config);
 		if (itemId === "settingsLanguage") return toggleLanguage(config);
 	}
-	if (tab === "icons" && itemId === "mode") return cycleIconMode(config);
+	if (tab === "icons") {
+		if (itemId === "mode") return cycleIconMode(config);
+		if (itemId === "cursorStyle") return cycleCursorStyle(config);
+	}
 	if (tab === "segments") {
 		return toggleSetting(config, itemId as keyof OpenTuiConfig["footerSegments"]);
 	}

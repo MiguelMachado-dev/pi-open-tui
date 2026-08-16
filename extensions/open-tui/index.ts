@@ -26,6 +26,13 @@ function isInteractiveLaunch(): boolean {
 	return true;
 }
 
+type PendingUiChange = "install" | "uninstall";
+
+export function getPendingUiChange(enabled: boolean, active: boolean): PendingUiChange | undefined {
+	if (enabled === active) return undefined;
+	return enabled ? "install" : "uninstall";
+}
+
 function clearVisibleScreen(): void {
 	if (process.stdout.isTTY) {
 		process.stdout.write("\x1b[2J\x1b[H");
@@ -53,8 +60,8 @@ export default function (pi: ExtensionAPI) {
 	let workingTimer: ReturnType<typeof setInterval> | undefined;
 	let cleanupHeader: (() => void) | undefined;
 	let cleanupFooter: (() => void) | undefined;
-	let cleanupEditor: (() => void) | undefined;
-	let pendingUiChange: "install" | "uninstall" | undefined;
+	let editor: ReturnType<typeof installEditor> | undefined;
+	let pendingUiChange: PendingUiChange | undefined;
 
 	const getThinkingLevel = () => (sessionLifecycle.isCurrent() ? pi.getThinkingLevel() : "off");
 
@@ -80,7 +87,7 @@ export default function (pi: ExtensionAPI) {
 					},
 				},
 			);
-			cleanupEditor = installEditor(pi, ctx);
+			editor = installEditor(pi, ctx, config.cursorStyle);
 			active = true;
 		}
 	};
@@ -90,10 +97,10 @@ export default function (pi: ExtensionAPI) {
 		if (active) {
 			cleanupHeader?.();
 			cleanupFooter?.();
-			cleanupEditor?.();
+			editor?.cleanup();
 			cleanupHeader = undefined;
 			cleanupFooter = undefined;
-			cleanupEditor = undefined;
+			editor = undefined;
 			requestFooterRender = undefined;
 			active = false;
 		}
@@ -265,14 +272,14 @@ export default function (pi: ExtensionAPI) {
 	registerSettingsCommand(pi, {
 		getConfig: () => config,
 		onConfigChanged: (newConfig) => {
-			const wasEnabled = config.enabled;
+			const cursorStyleChanged = config.cursorStyle !== newConfig.cursorStyle;
 			saveConfig(newConfig);
 			config = newConfig;
-			if (lastCtx && wasEnabled !== newConfig.enabled) {
-				// Both directions defer to onOverlayClosed: while the settings overlay
-				// is open, pi core's setEditorComponent() steals focus from the overlay
-				// and strands it without keyboard input.
-				pendingUiChange = newConfig.enabled ? "install" : "uninstall";
+			if (cursorStyleChanged && active && editor) {
+				editor.setCursorStyle(newConfig.cursorStyle);
+			}
+			if (lastCtx) {
+				pendingUiChange = getPendingUiChange(newConfig.enabled, active);
 			}
 			const gitNeeded = newConfig.footerSegments.gitBranch || newConfig.footerSegments.gitStatus || newConfig.footerSegments.gitCommit;
 			if (lastCtx && gitNeeded) {
@@ -286,7 +293,7 @@ export default function (pi: ExtensionAPI) {
 			if (!lastCtx || pendingUiChange === undefined) return;
 			const change = pendingUiChange;
 			pendingUiChange = undefined;
-			if (change === "uninstall") {
+			if (!config.enabled || change === "uninstall") {
 				uninstallUi(lastCtx);
 			} else {
 				applyUi(lastCtx);

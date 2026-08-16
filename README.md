@@ -14,7 +14,7 @@ A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-ha
 - **Working timer** — live elapsed time while the agent is working, done duration when finished
 - **Turn telemetry** — generation speed, TTFT, stalls, tokens, and list-price rate after each complete agent run
 - **Zero prototype patches** — uses public Pi APIs (setHeader/setFooter/setEditorComponent), safe across Pi updates
-- **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Icons / Footer / Telemetry)
+- **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Appearance / Footer / Telemetry)
 
 ## Install
 
@@ -36,6 +36,7 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 {
   "enabled": true,
   "settingsLanguage": "en",
+  "cursorStyle": "block",
   "icons": {
     "mode": "auto"
   },
@@ -64,6 +65,7 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 ```
 
 - `settingsLanguage`: language for the `/open-tui` settings UI only; `en` or `zh`
+- `cursorStyle`: editor cursor style; `block` (default), `bar`, or `underline`. The latter two use the terminal's hardware cursor and require a terminal that supports cursor-shape escape sequences.
 - `icons.mode`: `auto` (detect Nerd Font), `nerd` (force Nerd Font glyphs), or `ascii` (plain fallbacks)
 - `footerSegments.sessionName`: shows the current session name next to cwd (off by default); hidden when the session has no name
 - `footerSegments.gitCommit`: shows short hash + tag on detached HEAD (off by default)
