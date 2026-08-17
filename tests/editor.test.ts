@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { KeybindingsManager } from "@earendil-works/pi-coding-agent";
-import { TUI, type EditorTheme, type Terminal } from "@earendil-works/pi-tui";
+import { TuiMainScreen, type EditorTheme, type Terminal, type TUI } from "@earendil-works/pi-tui";
 import { installEditor, OpenTuiEditor } from "../extensions/open-tui/editor.ts";
 import { stripAnsi } from "../extensions/open-tui/utils.ts";
 
@@ -80,7 +80,7 @@ test("shows a hardware cursor while previewing a non-block style under an overla
 		hideCursor: () => cursorEvents.push("hide"),
 		showCursor: () => cursorEvents.push("show"),
 	} as unknown as Terminal;
-	const overlayTui = new TUI(terminal, false);
+	const overlayTui = new TuiMainScreen(terminal, false);
 	const editor = new OpenTuiEditor(
 		overlayTui,
 		editorTheme,
