@@ -1,36 +1,56 @@
 # pi-open-tui
 
-A polished TUI for [Pi](https://pi.dev) coding agent. Combines the best of pi-haiku, pi-claude-code-tui, and pi-zentui into one cohesive package.
+**English** | [简体中文](./README.zh-CN.md)
 
-![Preview](https://raw.githubusercontent.com/OldSuns/pi-open-tui/main/assets/preview_dashboard_1.png)
+A polished terminal interface for the [Pi](https://pi.dev) coding agent. It brings the strongest ideas from pi-haiku, pi-claude-code-tui, and pi-zentui into one configurable extension.
 
-## What's in it
+![pi-open-tui preview](https://raw.githubusercontent.com/OldSuns/pi-open-tui/main/assets/preview_dashboard_1.png)
 
-- **Animated Pi logo header** — 16-frame color-changing logo animation + "Let's build something great" tagline
-- **Starship-style footer** — 2 lines showing cwd, git branch/status, runtime version, context bar, model, token counts, and cost
-- **Rounded editor** — accent rail + borderMuted rounded corners, clean visual frame
-- **60+ runtime detection** — Node, Rust, Go, Python, Ruby, Java, Swift, Kotlin, C/C++, Deno, Bun, and many more
-- **Git status** — branch, ahead/behind, modified/untracked/staged/stashed, detached HEAD commit hash + tag
-- **Working timer** — live elapsed time while the agent is working, done duration when finished
-- **Turn telemetry** — generation speed, TTFT, stalls, tokens, and list-price rate after each complete agent run
-- **Zero prototype patches** — uses public Pi APIs (setHeader/setFooter/setEditorComponent), safe across Pi updates
-- **Interactive settings UI** — `/open-tui` opens a tabbed settings dialog (General / Appearance / Footer / Telemetry)
+## Highlights
+
+- **Pi header** with model, thinking level, working directory, and useful slash-command hints
+- **Responsive footer** with Git state, detected runtime, context usage, token counts, cost, and extension status
+- **Framed editor** with block, bar, and underline cursor styles
+- **Project awareness** for 50+ runtimes and detailed Git states, including ahead/behind, staged, modified, untracked, stashed, and detached HEAD
+- **Turn telemetry** for TPS, time to first token (TTFT), duration, stalls, tokens, and list-price rate
+- **Interactive settings** through `/open-tui`, available in English and Simplified Chinese
+- **Public Pi APIs only**: no prototype patching
+
+## Requirements
+
+- Pi 0.80 or later
+- A terminal with UTF-8 and color support
+- A [Nerd Font](https://www.nerdfonts.com/font-downloads) for the full icon set (optional; ASCII icons are built in)
 
 ## Install
+
+Install the extension:
 
 ```bash
 pi install npm:pi-open-tui
 ```
 
-Or try it for one run:
+Or try it for one session:
 
 ```bash
 pi -e npm:pi-open-tui
 ```
 
+## Font and icons
+
+Download any patched font from the official [Nerd Fonts downloads page](https://www.nerdfonts.com/font-downloads) or [latest GitHub release](https://github.com/ryanoasis/nerd-fonts/releases/latest). Install it, select that font in your terminal profile, and restart the terminal.
+
+The default `auto` mode detects the terminal environment, not the installed font file. If icons appear as boxes or incorrect symbols, open `/open-tui` and choose one of these modes under **Appearance**:
+
+- `nerd`: force Nerd Font icons after configuring a Nerd Font in the terminal
+- `ascii`: use plain-text icons with no patched font required
+- `auto`: use Nerd Font icons in recognized terminals and ASCII elsewhere
+
+If the font is installed but `auto` still selects ASCII, choose `nerd` explicitly. In VS Code, Windows Terminal, and similar apps, configure the font in the terminal profile rather than only installing it in the operating system.
+
 ## Configuration
 
-Run `/open-tui` to open the interactive settings UI. Configuration is stored at `~/.pi/agent/open-tui.json`:
+Run `/open-tui` to open the settings dialog. It provides **General**, **Appearance**, **Footer**, and **Telemetry** tabs. Settings are stored in `~/.pi/agent/open-tui.json`:
 
 ```json
 {
@@ -64,44 +84,52 @@ Run `/open-tui` to open the interactive settings UI. Configuration is stored at 
 }
 ```
 
-- `settingsLanguage`: language for the `/open-tui` settings UI only; `en` or `zh`
-- `cursorStyle`: editor cursor style; `block` (default), `bar`, or `underline`. The latter two use the terminal's hardware cursor and require a terminal that supports cursor-shape escape sequences.
-- `icons.mode`: `auto` (detect Nerd Font), `nerd` (force Nerd Font glyphs), or `ascii` (plain fallbacks)
-- `footerSegments.sessionName`: shows the current session name next to cwd (off by default); hidden when the session has no name
-- `footerSegments.gitCommit`: shows short hash + tag on detached HEAD (off by default)
-- `footerSegments.extensionStatuses`: shows statuses published by extensions through Pi's `setStatus()` API (on by default); turn it off to hide the whole status line, including MCP
+Key options:
+
+| Option | Values | Notes |
+| --- | --- | --- |
+| `settingsLanguage` | `en`, `zh` | Changes the `/open-tui` interface language |
+| `cursorStyle` | `block`, `bar`, `underline` | `bar` and `underline` require terminal cursor-shape support |
+| `icons.mode` | `auto`, `nerd`, `ascii` | Controls footer and telemetry icons |
+| `footerSegments` | Boolean flags | Shows or hides individual footer data |
+| `telemetry` | Boolean flags | Enables telemetry and its individual measurements |
+
+`sessionName` appears only when the session has a name. `gitCommit` shows the short hash and tag in detached HEAD state. Disabling `extensionStatuses` hides the entire extension status line, including MCP status.
 
 ## Turn telemetry
 
-After each complete agent run, open-tui shows one transient notification. Tool-call turns are aggregated into that single result:
+After each complete agent run, pi-open-tui shows one transient result. Tool-call turns are combined into that result:
 
 ```text
 > TPS 42.5 tok/s | ~ TTFT 1.2s | + 29.7s | ↑ 567 | ↓ 1.2k | ! stall 1x / 4.3s | $ $3.60/M
 ```
 
-The notification uses the footer's icon mode and semantic theme colors. Configure its master switch and individual TPS, TTFT, duration, token, stall, and cost segments from the **Telemetry** tab in `/open-tui`.
+TPS is calculated from all provider-reported assistant output tokens divided by the total generation time across the run. Timing starts at `turn_start` and ends at the assistant `message_end`, so it includes TTFT, hidden reasoning, buffering, and stalls; tool execution between turns is excluded. Runs without output tokens or measurable generation time show `TPS —`.
 
-TPS is the complete generation throughput for the agent run: all provider-reported assistant output tokens divided by the summed generation time of every LLM turn, measured from `turn_start` through the assistant `message_end`. This includes time-to-first-token, hidden reasoning, buffering, and stalls so the token count and timing cover the same interval. Tool execution between turns is excluded. A run with no output tokens or no measurable generation time is shown as `TPS —`. The `stall` segment shows occurrence count followed by accumulated duration. The optional `$ / M` value uses the model's list-price `usage.cost.total`; it is not the session's cumulative cost shown in the footer.
+The `$ / M` value is the model's list-price rate from `usage.cost.total`, not the cumulative session cost shown in the footer. Every telemetry field can be toggled from the **Telemetry** tab.
 
 ## Local development
 
 ```bash
+npm install
+npm test
+npm run typecheck
 pi -e .
 ```
 
-## License
-
-MIT
-
 ## Acknowledgements
 
-This project builds on the work of several Pi community packages:
+This project builds on several Pi community packages:
 
-- **[pi-haiku](https://github.com/nnocte/pi-haiku)** — the 2-line footer structure (location+model · timer+context) and working-timer pattern
-- **[pi-claude-code-tui](https://github.com/Phoobobo/pi-claude-code-tui)** — the 16-frame animated Pi logo and rounded editor border technique
-- **[pi-zentui](https://github.com/lmilojevicc/pi-zentui)** — the Starship-style footer segments (git status icons, runtime detection, context gauge), generation-based session lifecycle, and interactive settings UI pattern
-- **[pi-tps](https://github.com/monotykamary/pi-tps)** — the turn timing, stall detection, and conservative TPS measurement approach
+- **[pi-haiku](https://github.com/nnocte/pi-haiku)** — two-line footer structure and working timer
+- **[pi-claude-code-tui](https://github.com/Phoobobo/pi-claude-code-tui)** — Pi logo frames and rounded editor border technique
+- **[pi-zentui](https://github.com/lmilojevicc/pi-zentui)** — Starship-style footer segments, runtime detection, session lifecycle, and settings UI pattern
+- **[pi-tps](https://github.com/monotykamary/pi-tps)** — turn timing, stall detection, and conservative TPS measurement
 
-The animated logo frames are derived from `pi-claude-code-tui`, which in turn derive from Pi's official install script (`pi.dev/install.sh`). The runtime detection list and git porcelain parsing borrow structure from `pi-zentui`.
+The logo frames are derived from Pi's official install script (`pi.dev/install.sh`). Runtime detection and Git porcelain parsing borrow structure from `pi-zentui`.
 
-Special thanks to the **[LINUX DO](https://linux.do)** community for their support.
+Special thanks to the **[LINUX DO](https://linux.do)** community for its support.
+
+## License
+
+[MIT](./LICENSE)

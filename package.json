@@ -1,7 +1,7 @@
 {
   "name": "pi-open-tui",
   "version": "0.2.12",
-  "description": "A polished TUI for Pi coding agent: animated logo header, Starship-style footer, rounded editor with model metadata, and prompt-box user messages. Combines the best of pi-haiku, pi-claude-code-tui, and pi-zentui.",
+  "description": "A polished TUI for Pi coding agent: animated logo header, Starship-style footer, rounded editor with model metadata, and prompt-box user messages.",
   "type": "module",
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
     "extensions/",
     "assets/",
     "README.md",
+    "README.zh-CN.md",
     "LICENSE"
   ],
   "scripts": {
