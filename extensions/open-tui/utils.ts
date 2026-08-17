@@ -253,6 +253,80 @@ export function sanitizeStatus(text: string): string {
 		.trim();
 }
 
+function stripTerminalEscapeSequences(text: string): string {
+	let result = "";
+	let index = 0;
+	while (index < text.length) {
+		if (text[index] !== "\x1b") {
+			result += text[index];
+			index++;
+			continue;
+		}
+
+		const type = text[index + 1];
+		if (type === "[") {
+			index += 2;
+			while (index < text.length) {
+				const code = text.charCodeAt(index++);
+				if (code >= 0x40 && code <= 0x7e) break;
+			}
+			continue;
+		}
+		if (type === "]" || type === "P" || type === "X" || type === "^" || type === "_") {
+			index += 2;
+			while (index < text.length) {
+				if (text[index] === "\x07") {
+					index++;
+					break;
+				}
+				if (text[index] === "\x1b" && text[index + 1] === "\\") {
+					index += 2;
+					break;
+				}
+				index++;
+			}
+			continue;
+		}
+		index += Math.min(2, text.length - index);
+	}
+	return result;
+}
+
+function isSafeForegroundSgr(parameters: string): boolean {
+	const values = parameters.split(";").map(Number);
+	if (values.length === 1) {
+		const [value] = values;
+		return value === 39 || (value! >= 30 && value! <= 37) || (value! >= 90 && value! <= 97);
+	}
+	if (values[0] !== 38) return false;
+	if (values[1] === 5 && values.length === 3) {
+		return Number.isInteger(values[2]) && values[2]! >= 0 && values[2]! <= 255;
+	}
+	if (values[1] === 2 && values.length === 5) {
+		return values.slice(2).every((value) => Number.isInteger(value) && value >= 0 && value <= 255);
+	}
+	return false;
+}
+
+/** Keep foreground SGR colors while removing cursor movement and other terminal controls. */
+export function sanitizeStyledStatus(text: string): string {
+	const styles: string[] = [];
+	const protectedText = text.replace(/\x1b\[([0-9;]*)m/g, (sequence, parameters: string) => {
+		if (!isSafeForegroundSgr(parameters)) return sequence;
+		const index = styles.push(sequence) - 1;
+		return `\uE000${index}\uE001`;
+	});
+	let sanitized = stripTerminalEscapeSequences(protectedText)
+		.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+		.replace(/ +/g, " ")
+		.trim()
+		.replace(/\uE000(\d+)\uE001/g, (_marker, index: string) => styles[Number(index)] ?? "");
+	if (styles.some((style) => style !== "\x1b[39m") && !sanitized.endsWith("\x1b[39m")) {
+		sanitized += "\x1b[39m";
+	}
+	return sanitized;
+}
+
 export function formatThinkingLabel(level: string): string {
 	if (level === "off") return "thinking off";
 	return `${level} effort`;

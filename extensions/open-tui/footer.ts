@@ -17,6 +17,7 @@ import {
 	formatProviderLabel,
 	providerColor,
 	sanitizeStatus,
+	sanitizeStyledStatus,
 	stressColor,
 	truncateBranch,
 	truncatePath,
@@ -174,6 +175,8 @@ function renderStatsBlock(
 	return stats.join(` ${theme.fg("dim", "|")} `);
 }
 
+const INLINE_MODEL_STATUS_KEY = "pi-gpt-fast-mode";
+
 function renderExtensionStatusLines(
 	theme: Theme,
 	extensionStatuses: ReadonlyMap<string, string>,
@@ -181,6 +184,7 @@ function renderExtensionStatusLines(
 	width: number,
 ): string[] {
 	const statuses = Array.from(extensionStatuses.entries())
+		.filter(([key]) => key !== INLINE_MODEL_STATUS_KEY)
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([, text]) => sanitizeStatus(text))
 		.filter((text) => text.length > 0);
@@ -285,6 +289,11 @@ export function installFooter(
 				const fittedContext = contextText ? fitted.pop() ?? "" : "";
 				const line1 = alignRight(fitted.join(" "), fittedContext, width, theme);
 
+				const extensionStatuses = segments.extensionStatuses
+					? footerData.getExtensionStatuses()
+					: undefined;
+				const inlineStatus = extensionStatuses?.get(INLINE_MODEL_STATUS_KEY);
+
 				const modelParts: string[] = [];
 				modelParts.push(theme.fg("mdLink", glyphs.model));
 				if (meta.provider && meta.provider !== "Unknown") {
@@ -293,6 +302,10 @@ export function installFooter(
 				modelParts.push(theme.fg("text", meta.model));
 				if (meta.effort && meta.effort !== "off") {
 					modelParts.push(theme.fg(effortColor(meta.effort), `${glyphs.thinking} ${meta.effort}`));
+				}
+				if (inlineStatus) {
+					const styledStatus = sanitizeStyledStatus(inlineStatus);
+					if (visibleWidth(styledStatus) > 0) modelParts.push(styledStatus);
 				}
 				const modelBlock = modelParts.join(theme.fg("dim", " · "));
 
@@ -307,12 +320,12 @@ export function installFooter(
 
 				const mainLines = [line1, line2]
 					.map((line) => truncateToWidth(line, width, theme.fg("dim", "...")));
-				return segments.extensionStatuses
+				return extensionStatuses
 					? [
 						...mainLines,
 						...renderExtensionStatusLines(
 							theme,
-							footerData.getExtensionStatuses(),
+							extensionStatuses,
 							glyphs,
 							width,
 						),

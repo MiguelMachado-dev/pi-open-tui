@@ -11,11 +11,33 @@ import { installFooter } from "../extensions/open-tui/footer.ts";
 import { emptyGitStatus } from "../extensions/open-tui/git.ts";
 import { resolveGlyphs } from "../extensions/open-tui/icons.ts";
 import type { FooterState } from "../extensions/open-tui/state.ts";
-import { fitSegmentsByPriority, truncateBranch, truncatePath } from "../extensions/open-tui/utils.ts";
+import {
+	fitSegmentsByPriority,
+	sanitizeStyledStatus,
+	truncateBranch,
+	truncatePath,
+} from "../extensions/open-tui/utils.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
 } as Theme;
+
+test("styled status preserves only foreground colors", () => {
+	assert.equal(sanitizeStyledStatus("\x1b[31mred"), "\x1b[31mred\x1b[39m");
+	assert.equal(
+		sanitizeStyledStatus("\x1b[38;5;200mpink\x1b[39m"),
+		"\x1b[38;5;200mpink\x1b[39m",
+	);
+	assert.equal(
+		sanitizeStyledStatus("\x1b[38;2;255;95;95mcoral\x1b[39m"),
+		"\x1b[38;2;255;95;95mcoral\x1b[39m",
+	);
+	assert.equal(
+		sanitizeStyledStatus("\x1b[1m\x1b[48;2;1;2;3mFAST\x1b[0m\x1b[2J"),
+		"FAST",
+	);
+	assert.equal(sanitizeStyledStatus("\x1b]0;title\x07FAST"), "FAST");
+});
 
 test("branch truncation preserves the branch prefix", () => {
 	assert.equal(truncateBranch("fix/cwd-footer-truncation", 20), "fix/cwd-footer-tr...");
@@ -226,11 +248,15 @@ test("ASCII footer renders icons as semantic labels", () => {
 	assert.ok(footerFactory);
 
 	let extensionStatusReads = 0;
+	const fastStatus = "\x1b[38;2;255;95;95m⚡ FAST\x1b[39m\x1b[2J";
 	const footerData = {
 		onBranchChange: () => () => {},
 		getExtensionStatuses: () => {
 			extensionStatusReads++;
-			return new Map([["goal", "goal active"]]);
+			return new Map([
+				["goal", "goal active"],
+				["pi-gpt-fast-mode", fastStatus],
+			]);
 		},
 	} as unknown as ReadonlyFooterDataProvider;
 	const component = footerFactory(
@@ -238,7 +264,8 @@ test("ASCII footer renders icons as semantic labels", () => {
 		theme,
 		footerData,
 	) as Component;
-	const output = component.render(160).join("\n");
+	const lines = component.render(160);
+	const output = lines.join("\n");
 
 	for (const expected of [
 		"@",
@@ -253,10 +280,15 @@ test("ASCII footer renders icons as semantic labels", () => {
 		"↓ 40",
 		"c 50.0%",
 		"$ $0.125",
+		"⚡ FAST",
 		"& goal active",
 	]) {
 		assert.ok(output.includes(expected), `missing ${expected}\n${output}`);
 	}
+	assert.match(lines[1]!, /\x1b\[38;2;255;95;95m⚡ FAST\x1b\[39m/);
+	assert.match(lines[1]!.replace(/\x1b\[[0-9;]*m/g, ""), /~ high · ⚡ FAST/);
+	assert.doesNotMatch(lines[1]!, /\[2J/);
+	assert.doesNotMatch(lines[2]!, /FAST/);
 	assert.equal(extensionStatusReads, 1);
 
 	config.footerSegments.extensionStatuses = false;
