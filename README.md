@@ -13,6 +13,7 @@ A polished terminal interface for the [Pi](https://pi.dev) coding agent. It brin
 - **Framed editor** with block, bar, and underline cursor styles
 - **Project awareness** for 50+ runtimes and detailed Git states, including ahead/behind, staged, modified, untracked, stashed, and detached HEAD
 - **Turn telemetry** for TPS, time to first token (TTFT), duration, stalls, tokens, and list-price rate
+- **Max thinking effect**: an animated rainbow shimmer on the footer's `max` effort label
 - **Interactive settings** through `/open-tui`, available in English and Simplified Chinese
 - **Public Pi APIs only**: no prototype patching
 
@@ -60,6 +61,9 @@ Run `/open-tui` to open the settings dialog. It provides **General**, **Appearan
   "icons": {
     "mode": "auto"
   },
+  "effects": {
+    "maxEffort": true
+  },
   "footerSegments": {
     "cwd": true,
     "sessionName": false,
@@ -91,6 +95,7 @@ Key options:
 | `settingsLanguage` | `en`, `zh` | Changes the `/open-tui` interface language |
 | `cursorStyle` | `block`, `bar`, `underline` | `bar` and `underline` require terminal cursor-shape support |
 | `icons.mode` | `auto`, `nerd`, `ascii` | Controls footer and telemetry icons |
+| `effects.maxEffort` | `true`, `false` | Animated rainbow effect on the footer's `max` thinking label |
 | `footerSegments` | Boolean flags | Shows or hides individual footer data |
 | `telemetry` | Boolean flags | Enables telemetry and its individual measurements |
 

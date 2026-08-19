@@ -1,6 +1,7 @@
 import type { ExtensionContext, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { OpenTuiConfig } from "./config.ts";
+import { maxEffortFrame, renderMaxEffortSegment } from "./effects.ts";
 import type { IconGlyphs } from "./icons.ts";
 import { resolveGlyphs, resolveIconMode, runtimeSymbol } from "./icons.ts";
 import type { GitStatus } from "./git.ts";
@@ -301,7 +302,11 @@ export function installFooter(
 				}
 				modelParts.push(theme.fg("text", meta.model));
 				if (meta.effort && meta.effort !== "off") {
-					modelParts.push(theme.fg(effortColor(meta.effort), `${glyphs.thinking} ${meta.effort}`));
+					if (meta.effort === "max" && config.effects.maxEffort) {
+						modelParts.push(renderMaxEffortSegment(glyphs.thinking, maxEffortFrame(), config.icons.mode));
+					} else {
+						modelParts.push(theme.fg(effortColor(meta.effort), `${glyphs.thinking} ${meta.effort}`));
+					}
 				}
 				if (inlineStatus) {
 					const styledStatus = sanitizeStyledStatus(inlineStatus);

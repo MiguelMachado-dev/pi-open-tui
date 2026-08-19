@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type OpenTuiConfig, DEFAULT_CONFIG, ensureConfigExists, loadConfig, saveConfig } from "./config.ts";
 import { installEditor } from "./editor.ts";
+import { MAX_EFFORT_FRAME_MS } from "./effects.ts";
 import { installFooter } from "./footer.ts";
 import { installHeader } from "./header.ts";
 import { emptyGitStatus, readGitStatus } from "./git.ts";
@@ -58,6 +59,7 @@ export default function (pi: ExtensionAPI) {
 	let lastCtx: ExtensionContext | undefined;
 	let requestFooterRender: (() => void) | undefined;
 	let workingTimer: ReturnType<typeof setInterval> | undefined;
+	let maxEffortTimer: ReturnType<typeof setInterval> | undefined;
 	let cleanupHeader: (() => void) | undefined;
 	let cleanupFooter: (() => void) | undefined;
 	let editor: ReturnType<typeof installEditor> | undefined;
@@ -90,6 +92,7 @@ export default function (pi: ExtensionAPI) {
 			editor = installEditor(pi, ctx, config.cursorStyle);
 			active = true;
 		}
+		syncMaxEffortAnimation();
 	};
 
 	const uninstallUi = (ctx: ExtensionContext) => {
@@ -103,6 +106,33 @@ export default function (pi: ExtensionAPI) {
 			editor = undefined;
 			requestFooterRender = undefined;
 			active = false;
+		}
+		syncMaxEffortAnimation();
+	};
+
+	const isMaxEffortAnimated = (): boolean => {
+		if (!active || !lastCtx || !config.enabled || !config.effects.maxEffort) return false;
+		if (!sessionLifecycle.isCurrent()) return false;
+		if (lastCtx.model?.reasoning !== true) return false;
+		return pi.getThinkingLevel() === "max";
+	};
+
+	const syncMaxEffortAnimation = () => {
+		if (isMaxEffortAnimated()) {
+			if (maxEffortTimer) return;
+			maxEffortTimer = setInterval(() => {
+				if (!isMaxEffortAnimated()) {
+					syncMaxEffortAnimation();
+				return;
+				}
+				requestFooterRender?.();
+			}, MAX_EFFORT_FRAME_MS);
+			maxEffortTimer.unref?.();
+			return;
+		}
+		if (maxEffortTimer) {
+			clearInterval(maxEffortTimer);
+			maxEffortTimer = undefined;
 		}
 	};
 
@@ -186,6 +216,10 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_shutdown", async (_event, ctx) => {
 		sessionLifecycle.shutdown();
 		stopWorkingTimer();
+		if (maxEffortTimer) {
+			clearInterval(maxEffortTimer);
+			maxEffortTimer = undefined;
+		}
 		if (active) {
 			uninstallUi(ctx);
 		}
@@ -240,10 +274,12 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("model_select", (_event, ctx) => {
 		refreshInteractiveState(ctx);
+		syncMaxEffortAnimation();
 	});
 
 	pi.on("thinking_level_select", (_event, ctx) => {
 		refreshInteractiveState(ctx);
+		syncMaxEffortAnimation();
 	});
 
 	pi.on("message_end", (event, ctx) => {
@@ -275,6 +311,7 @@ export default function (pi: ExtensionAPI) {
 			const cursorStyleChanged = config.cursorStyle !== newConfig.cursorStyle;
 			saveConfig(newConfig);
 			config = newConfig;
+			syncMaxEffortAnimation();
 			if (cursorStyleChanged && active && editor) {
 				editor.setCursorStyle(newConfig.cursorStyle);
 			}

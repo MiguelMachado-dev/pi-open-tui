@@ -31,6 +31,10 @@ export interface TelemetryConfig {
 	cost: boolean;
 }
 
+export interface EffectsConfig {
+	maxEffort: boolean;
+}
+
 export interface OpenTuiConfig {
 	enabled: boolean;
 	settingsLanguage: SettingsLanguage;
@@ -38,6 +42,7 @@ export interface OpenTuiConfig {
 	icons: {
 		mode: IconMode;
 	};
+	effects: EffectsConfig;
 	footerSegments: FooterSegments;
 	telemetry: TelemetryConfig;
 }
@@ -48,6 +53,9 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	cursorStyle: "block",
 	icons: {
 		mode: "auto",
+	},
+	effects: {
+		maxEffort: true,
 	},
 	footerSegments: {
 		cwd: true,

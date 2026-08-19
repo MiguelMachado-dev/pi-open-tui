@@ -379,6 +379,80 @@ test("footer truncates long session names to 24 width units", () => {
 	assert.match(clean, /x{10,}\.\.\./, "truncated name should keep a prefix and ellipsis\n" + clean);
 });
 
+function renderFooterWithModelMeta(opts: {
+	effort: string;
+	effectEnabled?: boolean;
+	mode?: "nerd" | "ascii";
+	width?: number;
+}): string {
+	const { effort, effectEnabled = true, mode = "ascii", width = 160 } = opts;
+	let footerFactory: NonNullable<Parameters<ExtensionContext["ui"]["setFooter"]>[0]> | undefined;
+	const ctx = {
+		model: { provider: "openai", contextWindow: 1_000 },
+		ui: {
+			setFooter(factory: typeof footerFactory) {
+				footerFactory = factory;
+			},
+		},
+		sessionManager: {
+			getCwd: () => "/work/project",
+			getEntries: () => [],
+			getSessionName: () => undefined,
+		},
+		getContextUsage: () => ({ tokens: 0, contextWindow: 1_000, percent: 0 }),
+	} as unknown as ExtensionContext;
+	const config = structuredClone(DEFAULT_CONFIG);
+	config.icons.mode = mode;
+	config.effects.maxEffort = effectEnabled;
+	const state: FooterState = {
+		git: emptyGitStatus(),
+		runtime: null,
+		sessionStartEpoch: Date.now(),
+		workingSince: undefined,
+		lastDoneIn: undefined,
+	};
+	installFooter(
+		ctx,
+		() => state,
+		() => config,
+		() => ({ provider: "OpenAI", model: "gpt-5", effort }),
+		{ setRequestRender() {}, scheduleGitRefresh() {} },
+	);
+	assert.ok(footerFactory);
+	const footerData = {
+		onBranchChange: () => () => {},
+		getExtensionStatuses: () => new Map(),
+	} as unknown as ReadonlyFooterDataProvider;
+	const component = footerFactory(
+		{ requestRender() {} } as TUI,
+		theme,
+		footerData,
+	) as Component;
+	return component.render(width).join("\n");
+}
+
+test("footer renders the animated max effort segment", () => {
+	const lines = renderFooterWithModelMeta({ effort: "max" }).split("\n");
+	const modelLine = lines[1]!;
+	assert.match(modelLine, /\x1b\[1m/, `bold missing\n${modelLine}`);
+	assert.match(modelLine, /\x1b\[38;5;\d+m\S\x1b\[39m?/, `rainbow paint missing\n${modelLine}`);
+	assert.match(modelLine.replace(/\x1b\[[0-9;]*m/g, ""), /~ [*+#x] max [*+#x]/);
+});
+
+test("footer falls back to a plain max label when the effect is disabled", () => {
+	const output = renderFooterWithModelMeta({ effort: "max", effectEnabled: false });
+	const modelLine = output.split("\n")[1]!;
+	assert.match(modelLine.replace(/\x1b\[[0-9;]*m/g, ""), /~ max/);
+	assert.ok(!modelLine.includes("\x1b[1m"), `no bold expected\n${modelLine}`);
+});
+
+test("non-max effort levels keep the plain effort label", () => {
+	const output = renderFooterWithModelMeta({ effort: "high" });
+	const modelLine = output.split("\n")[1]!;
+	assert.match(modelLine.replace(/\x1b\[[0-9;]*m/g, ""), /~ high/);
+	assert.ok(!/\x1b\[38;5;\d+m/.test(modelLine), `no rainbow expected\n${modelLine}`);
+});
+
 test("session name uses matching glyph in nerd and ascii modes", () => {
 	const asciiOut = renderFooterWithSession({ mode: "ascii", sessionName: "sess" });
 	assert.ok(asciiOut.includes(resolveGlyphs("ascii").session), `ascii glyph missing\n${asciiOut}`);
