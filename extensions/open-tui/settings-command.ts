@@ -30,7 +30,6 @@ const COPY = {
 			language: "Language",
 			cursorStyle: "Cursor style",
 			iconMode: "Icon mode",
-			maxEffortEffect: "Max effort effect",
 			cwd: "CWD",
 			sessionName: "Session name",
 			gitBranch: "Git branch",
@@ -63,7 +62,6 @@ const COPY = {
 			language: "语言",
 			cursorStyle: "光标样式",
 			iconMode: "图标模式",
-			maxEffortEffect: "Max 动效",
 			cwd: "当前目录",
 			sessionName: "会话名",
 			gitBranch: "Git 分支",
@@ -123,10 +121,6 @@ function cycleCursorStyle(config: OpenTuiConfig): OpenTuiConfig {
 	return { ...config, cursorStyle: next };
 }
 
-function toggleMaxEffortEffect(config: OpenTuiConfig): OpenTuiConfig {
-	return { ...config, effects: { ...config.effects, maxEffort: !config.effects.maxEffort } };
-}
-
 function toggleTelemetry(config: OpenTuiConfig, key: keyof OpenTuiConfig["telemetry"]): OpenTuiConfig {
 	return {
 		...config,
@@ -145,7 +139,6 @@ function buildIconsItems(config: OpenTuiConfig, copy: SettingsCopy): SettingItem
 	return [
 		{ id: "mode", label: copy.labels.iconMode, currentValue: copy.values.icons[config.icons.mode] },
 		{ id: "cursorStyle", label: copy.labels.cursorStyle, currentValue: copy.values.cursorStyles[config.cursorStyle] },
-		{ id: "maxEffort", label: copy.labels.maxEffortEffect, currentValue: config.effects.maxEffort ? copy.values.on : copy.values.off },
 	];
 }
 
@@ -202,7 +195,6 @@ function handleSettingChange(
 	if (tab === "icons") {
 		if (itemId === "mode") return cycleIconMode(config);
 		if (itemId === "cursorStyle") return cycleCursorStyle(config);
-		if (itemId === "maxEffort") return toggleMaxEffortEffect(config);
 	}
 	if (tab === "segments") {
 		return toggleSetting(config, itemId as keyof OpenTuiConfig["footerSegments"]);
